@@ -1,5 +1,111 @@
 # SDE Intern Assignment: Shared Bill Splitter
 
+## Solution
+
+The implementation is in `api/src/` and `web/src/`. The original assignment and
+visible tests are retained below. Start with Node.js 22.13+ and pnpm 11+:
+
+```bash
+pnpm install
+pnpm dev
+```
+
+Open http://localhost:5173. Create a home, add housemates, then add and split a
+bill. Each unpaid share has a **Mark paid** button. The home is kept in the URL,
+so refreshing or opening that URL returns to the same home. Data is persisted
+in local D1, rather than browser storage. The interface displays USD; the API
+stores and accepts only integer cents.
+
+On Windows, you can also run `setup-project.cmd` once, then `start-project.cmd`
+from Command Prompt or by double-clicking the files. Keep the server window open
+while using the app. Press Ctrl+C to stop it.
+
+Repository: [aryansingho07/Shared-bill-spilter](https://github.com/aryansingho07/Shared-bill-spilter).
+
+```bash
+pnpm check
+pnpm typecheck
+pnpm test
+pnpm build
+```
+
+### Decisions
+
+1. **Keep ordering and money in the database.** Members have a monotonic integer
+   sequence. A SQL window query divides the total using integer arithmetic and
+   gives the remainder to the first members. Bill and share inserts run in one
+   D1 batch transaction, so a failed insert rolls the entire bill back. Later
+   members do not change earlier bills.
+2. **Make payment an atomic conditional write.** One `UPDATE ... WHERE paid_at
+   IS NULL RETURNING ...` sets both the timestamp and the idempotency key.
+   Competing keys receive 409, and retries with the winning key return the
+   stored result. Keys are scoped to a share. No process-local locks are used
+   for server correctness. The browser retains its key for retries, including
+   after an uncertain network response.
+3. **Prefer a small, explicit client.** React state and a typed fetch wrapper
+   cover this one-page app without an additional state or form library. Requests
+   time out after 15 seconds and stale requests are aborted. A share changes to
+   paid only after API success. A failed payment leaves the displayed share
+   unpaid with an inline retry/refresh message. Three small read endpoints let
+   the client discover homes, members, and bills after refresh.
+
+### Architecture and data safeguards
+
+Browser → Vite `/api` proxy → Hono Worker → D1 SQLite.
+
+- `api/migrations/0001_init.sql` defines the complete schema. Named constraints
+  include `bills_total_valid` (positive safe integer totals),
+  `shares_amount_valid` (nonnegative integer shares),
+  `shares_bill_member_unique` (one share per member per bill), and
+  `shares_payment_consistent` (key and timestamp must be stored together).
+- Composite foreign keys `shares_bill_home_fk` and `shares_member_home_fk`
+  prevent attaching a share to a bill or member from a different home.
+- A database trigger prevents creating bills in a home with no members.
+- `api/test/edge-cases.test.ts` adds concurrency, rollback, isolation, safe-integer,
+  zero-cent-share, validation, and historical-split coverage. Supplied tests
+  and helpers have not been edited.
+- Additional reads: `GET /api/homes`, `GET /api/homes/:homeId` (includes members),
+  and `GET /api/homes/:homeId/bills` (includes ordered shares).
+
+### Scope and trade-offs
+
+This is a local take-home app without authentication or a payment provider.
+“Mark paid” records settlement; it does not transfer money. Anyone with access
+to the running API can read homes and mark shares paid. For a production service,
+add authenticated home membership and authorization before exposing these routes.
+No bill/member deletion or editing is provided. Refresh retrieves other clients’
+changes; the page does not poll. Creating homes, members, and bills is not an
+idempotent operation; payment retries are.
+
+Cloudflare deployment requires creating a real D1 database, replacing
+`database_id: "local-only"` in `api/wrangler.jsonc`, applying migrations remotely,
+and configuring web hosting to proxy `/api` to that Worker. The supplied local
+configuration needs no Cloudflare account.
+
+### Submission preparation
+
+- Submit the repository above and confirm it is **public**.
+- Use [the spoken video script](docs/video-script.md) and
+  [walkthrough guide](docs/video-guide.md) to record your own video of three
+  minutes or less.
+- Disclose Codex assistance on the application form as the assignment requests.
+  Review and understand the implementation before submitting it.
+
+### Verification
+
+`pnpm check`, `pnpm typecheck`, `pnpm test` (46 tests), and `pnpm build`
+passed. The supplied test files and helper are unchanged.
+
+The running app was also exercised in headless Chrome at desktop and mobile
+sizes: creating a home and members, exact bill splitting, invalid fractional
+cents, paying shares, filtering, and refresh persistence. Network interception
+verified that a 500 leaves a share unpaid, a lost payment response can be retried
+with the same key, slow requests show loading, requests exceeding 15 seconds
+time out, and non-JSON errors recover through retry. No browser crashes or
+horizontal overflow were observed at 390px width.
+
+---
+
 Welcome. In this assignment you build a small bill splitter for a shared home. It has two parts:
 
 1. **Homes and members:** create a home and add members to it.
