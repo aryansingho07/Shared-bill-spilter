@@ -12,7 +12,7 @@ Run these commands one at a time:
 cd /d "C:\Shared Bill Splitter"
 pnpm --filter bill-splitter-api exec wrangler login
 pnpm --filter bill-splitter-api exec wrangler d1 migrations apply DB --remote
-pnpm --filter bill-splitter-api deploy
+pnpm --filter bill-splitter-api run deploy
 ```
 
 The login command opens your browser. Sign in to the Cloudflare account that
@@ -54,7 +54,7 @@ Use the `main` branch of `aryansingho07/Shared-bill-spilter` and the repository
 root as the build root. The deploy command is:
 
 ```text
-pnpm --filter bill-splitter-api deploy
+pnpm --filter bill-splitter-api run deploy
 ```
 
 Install dependencies from the repository root with `pnpm install --frozen-lockfile`
