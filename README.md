@@ -77,10 +77,10 @@ No bill/member deletion or editing is provided. Refresh retrieves other clientsâ
 changes; the page does not poll. Creating homes, members, and bills is not an
 idempotent operation; payment retries are.
 
-Cloudflare deployment requires creating a real D1 database, replacing
-`database_id: "local-only"` in `api/wrangler.jsonc`, applying migrations remotely,
-and configuring web hosting to proxy `/api` to that Worker. The supplied local
-configuration needs no Cloudflare account.
+The production D1 database is configured in `api/wrangler.jsonc`, with the
+binding name `DB`. Follow [the backend deployment guide](docs/cloudflare-deployment.md)
+to sign in, apply remote migrations, and deploy the Worker. Local development
+still uses an independent local database and needs no Cloudflare account.
 
 ### Submission preparation
 
