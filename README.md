@@ -82,6 +82,11 @@ binding name `DB`. Follow [the backend deployment guide](docs/cloudflare-deploym
 to sign in, apply remote migrations, and deploy the Worker. Local development
 still uses an independent local database and needs no Cloudflare account.
 
+For Vercel hosting, use root directory `web`, build command `pnpm build`, and
+output directory `dist`. The tracked `web/vercel.json` connects `/api/*` to the
+Cloudflare Worker, so no API URL environment variable is needed. Redeploy the
+frontend when adding or changing that proxy configuration.
+
 ### Submission preparation
 
 - Submit the repository above and confirm it is **public**.

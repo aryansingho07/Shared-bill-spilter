@@ -63,13 +63,46 @@ the Vite frontend build. Apply the remote migration using the Command Prompt
 instructions before testing the deployed API. The Wrangler configuration declares
 the D1 binding, so do not rename it to the database's display name in the dashboard.
 
-## Connecting the frontend later
+## Connect the Vercel frontend
 
-The frontend currently requests `/api` on its own origin. Vite forwards those
-requests locally, but the development proxy is not included in a production
-frontend build. When hosting the frontend, configure its host to proxy `/api/*`
-to this Worker, preserving the path. A direct cross-origin frontend setup would
-need both an API base URL and an explicit CORS policy.
+The frontend requests `/api` on its own origin. Vite forwards those requests
+locally. In production, `web/vercel.json` forwards `/api/*` from Vercel to:
+
+```text
+https://bill-splitter-api.bill-splitter-api.workers.dev/api/*
+```
+
+The browser uses the Vercel origin and Vercel proxies the request to Cloudflare.
+No frontend API URL environment variable or browser CORS change is required for
+this arrangement. Other application paths fall back to `index.html` for React
+routing; API errors remain API responses.
+
+In your existing Vercel project, keep these settings:
+
+| Setting           | Value        |
+| ----------------- | ------------ |
+| Root Directory    | `web`        |
+| Framework Preset  | Vite         |
+| Build Command     | `pnpm build` |
+| Output Directory  | `dist`       |
+| Production Branch | `main`       |
+
+Redeploy after the commit containing `web/vercel.json` reaches GitHub. A connected
+Vercel project normally starts a deployment automatically when changes are pushed
+to its production branch. If no deployment starts, open Vercel's Deployments tab
+and deploy the latest `main` commit. An older deployment will not contain the new
+proxy rule. Keep the existing project and its public domain.
+
+After deployment, open `https://YOUR-VERCEL-DOMAIN/api/health`; it should return
+`{"status":"ok"}`. Open `/api/homes` to confirm D1 access, then refresh the app.
+These must be JSON responses, not the frontend HTML page. Both POST requests and
+the `Idempotency-Key` header use the same proxy, including when paying a share.
+
+If you later change the Worker URL, update the destination in `web/vercel.json`
+and redeploy Vercel. Deploying backend code alone does not require rebuilding
+the frontend when the Worker URL and API contract stay the same.
+
+Reference: [Vercel external rewrites](https://vercel.com/docs/routing/rewrites).
 
 ## Common errors
 
